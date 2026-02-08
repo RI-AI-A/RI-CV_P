@@ -1,0 +1,77 @@
+version: '3.8'
+
+services:
+  postgres:
+    image: postgres:15-alpine
+    container_name: retail_intel_db
+    environment:
+      POSTGRES_USER: ${POSTGRES_USER:-retail_user}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-retail_pass}
+      POSTGRES_DB: ${POSTGRES_DB:-retail_intel}
+    ports:
+      - "5432:5432"
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U retail_user -d retail_intel"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+    networks:
+      - retail_network
+
+  api_service:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    container_name: retail_intel_api
+    command: uvicorn api_service.main:app --host 0.0.0.0 --port 8000 --reload
+    environment:
+      DATABASE_URL: ${DATABASE_URL:-postgresql+asyncpg://retail_user:retail_pass@postgres:5432/retail_intel}
+      API_HOST: ${API_HOST:-0.0.0.0}
+      API_PORT: ${API_PORT:-8000}
+      LOG_LEVEL: ${LOG_LEVEL:-INFO}
+      LOG_FORMAT: ${LOG_FORMAT:-json}
+    ports:
+      - "8000:8000"
+    volumes:
+      - ./:/app
+    depends_on:
+      postgres:
+        condition: service_healthy
+    networks:
+      - retail_network
+    restart: unless-stopped
+
+  cv_service:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    container_name: retail_intel_cv
+    command: python -m cv_service.stream_processor
+    environment:
+      CV_BRANCH_ID: ${CV_BRANCH_ID:-branch_001}
+      CV_VIDEO_SOURCE: ${CV_VIDEO_SOURCE:-/data/sample_video.mp4}
+      CV_ROI_COORDINATES: ${CV_ROI_COORDINATES:-100,100,500,400}
+      YOLO_MODEL_PATH: ${YOLO_MODEL_PATH:-yolov8n.pt}
+      YOLO_CONFIDENCE_THRESHOLD: ${YOLO_CONFIDENCE_THRESHOLD:-0.5}
+      TRACKER_TYPE: ${TRACKER_TYPE:-bytetrack}
+      TRACKER_MAX_AGE: ${TRACKER_MAX_AGE:-30}
+      TRACKER_MIN_HITS: ${TRACKER_MIN_HITS:-3}
+      API_BASE_URL: ${API_BASE_URL:-http://api_service:8000}
+      LOG_LEVEL: ${LOG_LEVEL:-INFO}
+    volumes:
+      - ./:/app
+      - ./data:/data
+    depends_on:
+      - api_service
+    networks:
+      - retail_network
+    restart: unless-stopped
+
+volumes:
+  postgres_data:
+
+networks:
+  retail_network:
+    driver: bridge
