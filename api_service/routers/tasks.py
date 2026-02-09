@@ -6,8 +6,9 @@ from typing import List
 import structlog
 
 from api_service.deps import get_database
-from schemas.task import TaskCreate, TaskResponse
+from schemas.task import TaskCreate, TaskResponse, TaskFromRecommendation, TaskStatusUpdate, TaskAction
 from db.models import Task
+from api_service.services.task_service import TaskService
 
 logger = structlog.get_logger()
 
@@ -84,3 +85,58 @@ async def get_tasks_by_branch(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
             detail=f"Failed to retrieve tasks: {str(e)}"
         )
+@router.post("/from-recommendation", response_model=TaskResponse, status_code=status.HTTP_201_CREATED)
+async def create_task_from_recommendation(
+    task_req: TaskFromRecommendation,
+    db: AsyncSession = Depends(get_database)
+):
+    """
+    Create a new task from a recommendation.
+    """
+    try:
+        service = TaskService(db)
+        return await service.create_from_recommendation(task_req)
+    except Exception as e:
+        logger.error("Error creating task from recommendation", error=str(e))
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail=str(e)
+        )
+
+@router.patch("/{task_id}/approve", response_model=TaskResponse)
+async def approve_task(
+    task_id: int,
+    db: AsyncSession = Depends(get_database)
+):
+    """Approve a task, moving it to in_progress."""
+    try:
+        service = TaskService(db)
+        update = TaskStatusUpdate(action=TaskAction.APPROVE)
+        task = await service.update_status(task_id, update)
+        if not task:
+            raise HTTPException(status_code=404, detail="Task not found")
+        return task
+    except HTTPException:
+        raise
+    except Exception as e:
+        logger.error(f"Error approving task {task_id}", error=str(e))
+        raise HTTPException(status_code=500, detail=str(e))
+
+@router.patch("/{task_id}/complete", response_model=TaskResponse)
+async def complete_task(
+    task_id: int,
+    db: AsyncSession = Depends(get_database)
+):
+    """Mark a task as completed."""
+    try:
+        service = TaskService(db)
+        update = TaskStatusUpdate(action=TaskAction.COMPLETE)
+        task = await service.update_status(task_id, update)
+        if not task:
+            raise HTTPException(status_code=404, detail="Task not found")
+        return task
+    except HTTPException:
+        raise
+    except Exception as e:
+        logger.error(f"Error completing task {task_id}", error=str(e))
+        raise HTTPException(status_code=500, detail=str(e))

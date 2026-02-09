@@ -1,0 +1,14 @@
+{
+    "streams": [
+        {
+            "branch_id": "branch_001",
+            "video_source": "/home/ahmad-alshomaree/Desktop/Retail Intligence Chatbot/retail-intel-cv-backend/data/retail_sample.mp4",
+            "roi_coordinates": "400,200,1500,900"
+        },
+        {
+            "branch_id": "branch_002",
+            "video_source": "/home/ahmad-alshomaree/Desktop/Retail Intligence Chatbot/retail-intel-cv-backend/data/retail_sample.mp4",
+            "roi_coordinates": "100,100,600,600"
+        }
+    ]
+}

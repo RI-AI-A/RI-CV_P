@@ -30,7 +30,7 @@ ENV/
 .coverage
 htmlcov/
 
-# Docker
+# Temporary PID files
 *.pid
 
 # YOLO models cache

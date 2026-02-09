@@ -5,7 +5,7 @@ import structlog
 from contextlib import asynccontextmanager
 
 from api_service.config import api_config
-from api_service.routers import cv_ingestion, branches, tasks, events, kpis
+from api_service.routers import cv_ingestion, branches, tasks, events, kpis, situations, recommendations
 from db.session import engine
 
 # Configure structured logging
@@ -55,6 +55,8 @@ app.include_router(branches.router)
 app.include_router(tasks.router)
 app.include_router(events.router)
 app.include_router(kpis.router)
+app.include_router(situations.router)
+app.include_router(recommendations.router)
 
 
 @app.get("/health")

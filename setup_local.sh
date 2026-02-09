@@ -1,6 +1,4 @@
-#!/bin/bash
-# Quick setup script for local testing without Docker
-
+# Quick setup script for local testing
 echo "🚀 Setting up Retail Intelligence CV Backend for local testing..."
 
 # Create virtual environment

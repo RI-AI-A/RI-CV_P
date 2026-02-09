@@ -1,0 +1,58 @@
+# Retail Intelligence Platform - Business Rules Configuration
+
+# Situation Detection Thresholds
+situation_thresholds:
+  crowding:
+    congestion_level: 0.8        # > 80% capacity
+    severity_high: 0.9           # > 90% capacity
+    severity_medium: 0.8         # > 80% capacity
+    severity_low: 0.6            # > 60% capacity
+
+  underperformance:
+    traffic_index: 0.7           # < 70% of historical average
+    conversion_proxy: 0.5        # < 50% relative to baseline (e.g. if baseline 20%, < 10% is underperforming)
+    growth_momentum: -0.1        # Negative trend
+
+  high_traffic_low_conversion:
+    traffic_index: 1.2           # > 120% traffic
+    conversion_proxy: 0.6        # < 60% conversion rate
+
+  understaffed:
+    staffing_adequacy_index: 0.7 # < 70% of required staff
+    bottleneck_score: 0.6        # > 0.6 bottleneck score
+
+# Recommendation Rules
+recommendations:
+  crowding:
+    - action: "Open additional checkout counters"
+      priority: "high"
+      condition: "congestion_level > 0.9"
+      impact_template: "Reduces queue wait time by ~{value}%"
+      value_factor: 25
+    
+    - action: "Deploy floor staff to manage flow"
+      priority: "medium"
+      condition: "congestion_level > 0.8"
+      impact_template: "Improves customer flow efficiency"
+      
+  underperformance:
+    - action: "Launch flash promotion"
+      priority: "medium"
+      condition: "traffic_index < 0.6"
+      impact_template: "Expected to boost traffic by ~15%"
+      
+    - action: "Review product placement"
+      priority: "low"
+      condition: "conversion_proxy < 0.5"
+      impact_template: "Could improve conversion by ~5-10%"
+
+  understaffed:
+    - action: "Call in backup staff"
+      priority: "high"
+      condition: "staffing_adequacy_index < 0.5"
+      impact_template: "Restores service levels to standard"
+      
+    - action: "Reallocate break times"
+      priority: "medium"
+      condition: "staffing_adequacy_index < 0.8"
+      impact_template: "Optimizes current staff availability"

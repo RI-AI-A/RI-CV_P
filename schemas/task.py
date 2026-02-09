@@ -2,6 +2,7 @@
 from pydantic import BaseModel, Field
 from datetime import datetime
 from typing import Optional
+from enum import Enum
 
 
 class TaskCreate(BaseModel):
@@ -38,3 +39,24 @@ class TaskResponse(BaseModel):
 
     class Config:
         from_attributes = True
+
+class TaskFromRecommendation(BaseModel):
+    """Schema for creating a task from a recommendation."""
+    employee_id: int
+    branch_id: str
+    action: str
+    priority: str
+    expected_impact: str
+    details: Optional[str] = None
+    note: Optional[str] = None
+
+class TaskAction(str, Enum):
+    APPROVE = "approve"
+    REJECT = "reject"
+    COMPLETE = "complete"
+
+class TaskStatusUpdate(BaseModel):
+    """Schema for updating task status."""
+    action: TaskAction
+    note: Optional[str] = None
+

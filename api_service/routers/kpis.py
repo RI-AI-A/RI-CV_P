@@ -47,9 +47,14 @@ async def run_etl(
         )
 
 
+from datetime import datetime
+from typing import Optional
+
 @router.get("/kpis/branch/{branch_id}", response_model=List[KPIResponse])
 async def get_branch_kpis(
     branch_id: str,
+    from_date: Optional[datetime] = None,
+    to_date: Optional[datetime] = None,
     limit: int = 10,
     db: AsyncSession = Depends(get_database)
 ):
@@ -58,6 +63,8 @@ async def get_branch_kpis(
     
     Args:
         branch_id: Branch ID
+        from_date: Optional start date filter
+        to_date: Optional end date filter
         limit: Maximum number of records to return
         db: Database session
         
@@ -65,15 +72,18 @@ async def get_branch_kpis(
         List of KPI records
     """
     try:
-        result = await db.execute(
-            select(BranchKPITimeseries)
-            .where(BranchKPITimeseries.branch_id == branch_id)
-            .order_by(BranchKPITimeseries.time_window_start.desc())
-            .limit(limit)
-        )
-        kpis = result.scalars().all()
+        query = select(BranchKPITimeseries).where(BranchKPITimeseries.branch_id == branch_id)
         
-        return kpis
+        if from_date:
+            query = query.where(BranchKPITimeseries.time_window_start >= from_date)
+            
+        if to_date:
+            query = query.where(BranchKPITimeseries.time_window_end <= to_date)
+            
+        result = await db.execute(
+            query.order_by(BranchKPITimeseries.time_window_start.desc()).limit(limit)
+        )
+        return result.scalars().all()
     
     except Exception as e:
         logger.error("Error retrieving KPIs", error=str(e))

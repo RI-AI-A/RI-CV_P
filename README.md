@@ -28,9 +28,8 @@ A production-grade Computer Vision microservice and Backend API for a Retail Int
 
 ### Prerequisites
 
-- Docker & Docker Compose
-- Python 3.10+ (for local development)
-- PostgreSQL 15+ (if running without Docker)
+- Python 3.10+
+- PostgreSQL 15+
 
 ### Installation
 
@@ -49,14 +48,14 @@ cp .env.example .env
    - Configure `CV_ROI_COORDINATES` for enter/exit detection
    - Adjust database credentials if needed
 
-4. **Start services with Docker Compose**:
+4. **Initial setup**:
 ```bash
-docker-compose up -d
+./setup_local.sh
 ```
 
-5. **Run database migrations**:
+5. **Run database migrations** (if not done by setup script):
 ```bash
-docker-compose exec api_service alembic upgrade head
+alembic upgrade head
 ```
 
 6. **Verify services are running**:
@@ -169,6 +168,65 @@ curl http://localhost:8000/kpis/branch/branch_001
 GET /health
 ```
 
+## 🧠 Decision Intelligence API
+
+### Situation Analysis
+```bash
+GET /situations/branch/{branch_id}
+```
+Analyzes current branch KPIs to detect operational situations (e.g., Crowding, Underperformance).
+
+**Response**:
+```json
+{
+  "branch_id": "branch_001",
+  "situation": "crowding",
+  "severity": 0.9,
+  "evidence": [
+    {
+      "kpi_name": "congestion_level",
+      "value": 0.95,
+      "threshold": 0.8,
+      "description": "Congestion 0.95 exceeds threshold 0.8"
+    }
+  ],
+  "details": "Downtown Branch is currently experiencing crowding. This is indicated by: congestion level is 0.95 (threshold: 0.8)."
+}
+```
+
+### Recommendations
+```bash
+GET /recommendations/{branch_id}
+POST /recommendations/{branch_id}
+```
+Generates actionable recommendations based on the diagnosed situation.
+
+**Response**:
+```json
+{
+  "branch_id": "branch_001",
+  "situation": { ... },
+  "recommendations": [
+    {
+      "action": "Open additional checkout counters",
+      "priority": "high",
+      "expected_impact": "Reduces queue wait time",
+      "value_factor": 25.0
+    }
+  ]
+}
+```
+
+### Enhanced Task Workflow
+```bash
+# Create task from recommendation
+POST /tasks/from-recommendation
+
+# Workflow actions
+PATCH /tasks/{task_id}/approve
+PATCH /tasks/{task_id}/complete
+```
+
 ## 📊 KPI Metrics
 
 The system computes the following KPIs:
@@ -241,9 +299,9 @@ source venv/bin/activate  # On Windows: venv\Scripts\activate
 pip install -r requirements.txt
 ```
 
-3. **Start PostgreSQL** (via Docker):
+3. **Start PostgreSQL**:
 ```bash
-docker-compose up -d postgres
+sudo service postgresql start
 ```
 
 4. **Run migrations**:
@@ -328,8 +386,6 @@ retail-intel-cv-backend/
 │   ├── test_cv_ingestion.py # CV ingestion tests
 │   └── test_kpi_pipeline.py # KPI computation tests
 │
-├── docker-compose.yml       # Docker Compose configuration
-├── Dockerfile               # Docker image definition
 ├── requirements.txt         # Python dependencies
 ├── alembic.ini              # Alembic configuration
 ├── .env.example             # Environment variables template
@@ -391,12 +447,12 @@ This is an academic project. For questions or suggestions, please contact the pr
 - Adjust `YOLO_CONFIDENCE_THRESHOLD` in `.env`
 
 ### Database Connection Issues
-- Ensure PostgreSQL is running: `docker-compose ps`
+- Ensure PostgreSQL is running
 - Check database credentials in `.env`
-- Verify network connectivity: `docker-compose logs postgres`
+- Verify network connectivity
 
 ### API Service Errors
-- Check logs: `docker-compose logs api_service`
+- Check logs
 - Verify all migrations are applied: `alembic current`
 - Ensure database is accessible
 
@@ -408,6 +464,6 @@ This is an academic project. For questions or suggestions, please contact the pr
 ## 📞 Support
 
 For issues or questions:
-1. Check the logs: `docker-compose logs [service_name]`
+1. Check the logs
 2. Review API documentation: `http://localhost:8000/docs`
 3. Verify environment configuration in `.env`

@@ -28,9 +28,25 @@ logger = structlog.get_logger()
 class StreamProcessor:
     """Main CV stream processor with ROI-based tracking."""
     
-    def __init__(self):
-        """Initialize stream processor."""
+    def __init__(
+        self, 
+        branch_id: Optional[str] = None, 
+        video_source: Optional[str] = None,
+        roi_coordinates: Optional[str] = None
+    ):
+        """
+        Initialize stream processor.
+        
+        Args:
+            branch_id: ID of the branch
+            video_source: RTSP URL or file path
+            roi_coordinates: ROI coordinates string "x1,y1,x2,y2"
+        """
         self.config = cv_config
+        self.branch_id = branch_id or self.config.branch_id
+        self.video_source = video_source or self.config.video_source
+        self.roi_coordinates = roi_coordinates or self.config.roi_coordinates
+        
         self.detector = PersonDetector(
             model_path=self.config.yolo_model_path,
             confidence_threshold=self.config.yolo_confidence_threshold
@@ -42,17 +58,24 @@ class StreamProcessor:
         self.api_client = CVAPIClient(self.config.api_base_url)
         
         # ROI configuration
-        self.roi_box = self.config.roi_box
+        self.roi_box = self._parse_roi(self.roi_coordinates)
         
         # Track state management
         self.track_states: Dict[int, dict] = {}
         
         logger.info(
             "Stream processor initialized",
-            branch_id=self.config.branch_id,
-            video_source=self.config.video_source,
+            branch_id=self.branch_id,
+            video_source=self.video_source,
             roi_box=self.roi_box
         )
+    
+    def _parse_roi(self, roi_str: str) -> Tuple[int, int, int, int]:
+        """Parse ROI coordinates into tuple."""
+        coords = [int(x.strip()) for x in roi_str.split(",")]
+        if len(coords) != 4:
+            raise ValueError("ROI coordinates must be in format: x1,y1,x2,y2")
+        return tuple(coords)
     
     def is_inside_roi(self, point: Tuple[int, int]) -> bool:
         """
@@ -148,7 +171,7 @@ class StreamProcessor:
         """
         event_data = CVEventBuilder.build_event(
             customer_id=track.customer_id,
-            branch_id=self.config.branch_id,
+            branch_id=self.branch_id,
             enter_time=track.enter_time,
             exit_time=track.exit_time,
             action_type=action_type
@@ -275,7 +298,7 @@ class StreamProcessor:
                    cv2.FONT_HERSHEY_SIMPLEX, 0.8, (255, 255, 255), 2)
         cv2.putText(vis_frame, f"Active Tracks: {len(tracks)}", (10, 50),
                    cv2.FONT_HERSHEY_SIMPLEX, 0.6, (0, 255, 255), 2)
-        cv2.putText(vis_frame, f"Branch: {self.config.branch_id}", (10, 75),
+        cv2.putText(vis_frame, f"Branch: {self.branch_id}", (10, 75),
                    cv2.FONT_HERSHEY_SIMPLEX, 0.6, (0, 255, 255), 2)
         
         # Add legend
@@ -291,70 +314,84 @@ class StreamProcessor:
         cv2.rectangle(vis_frame, (legend_x, 75), (legend_x + 20, 90), (0, 255, 255), -1)
         cv2.putText(vis_frame, "In ROI", (legend_x + 25, 88),
                    cv2.FONT_HERSHEY_SIMPLEX, 0.5, (255, 255, 255), 1)
-        
         return vis_frame
     
     def run(self):
-        """Main processing loop."""
-        logger.info("Starting stream processor")
+        """Main processing loop with reconnection logic."""
+        logger.info("Starting stream processor", branch_id=self.branch_id)
         
-        # Open video source
-        cap = cv2.VideoCapture(self.config.video_source)
-        
-        if not cap.isOpened():
-            logger.error("Failed to open video source", source=self.config.video_source)
-            sys.exit(1)
-        
-        frame_count = 0
-        
-        try:
-            while True:
-                ret, frame = cap.read()
-                
-                if not ret:
-                    logger.warning("End of video stream or read error")
-                    break
-                
-                frame_count += 1
-                
-                # Detect persons
-                detections = self.detector.detect(frame)
-                
-                # Update tracker
-                tracks = self.tracker.update(detections)
-                
-                # Process each track for ROI crossing
-                for track_id, track in tracks.items():
-                    self.process_track_roi_crossing(track, track_id)
-                
-                # Draw visualization (always enabled for demonstration)
-                vis_frame = self.draw_visualization(frame, tracks, detections)
-                cv2.imshow("Retail Intelligence - CV System", vis_frame)
-                
-                # Press 'q' to quit, 'p' to pause
-                key = cv2.waitKey(1) & 0xFF
-                if key == ord('q'):
-                    logger.info("User requested quit")
-                    break
-                elif key == ord('p'):
-                    logger.info("Paused - press any key to continue")
-                    cv2.waitKey(0)
-                
-                # Log progress
-                if frame_count % 100 == 0:
-                    logger.info(
-                        "Processing progress",
-                        frame_count=frame_count,
-                        active_tracks=len(tracks)
-                    )
-        
-        except KeyboardInterrupt:
-            logger.info("Stream processor interrupted by user")
-        
-        finally:
-            cap.release()
-            cv2.destroyAllWindows()
-            logger.info("Stream processor stopped", total_frames=frame_count)
+        while True:
+            # Open video source
+            cap = cv2.VideoCapture(self.video_source)
+            
+            if not cap.isOpened():
+                logger.error("Failed to open video source", source=self.video_source)
+                import time
+                time.sleep(5)  # Wait before retrying
+                continue
+            
+            frame_count = 0
+            last_frame_time = datetime.utcnow()
+            
+            try:
+                while True:
+                    ret, frame = cap.read()
+                    
+                    if not ret:
+                        logger.warning("Stream disconnected or ended", branch_id=self.branch_id)
+                        break
+                    
+                    frame_count += 1
+                    last_frame_time = datetime.utcnow()
+                    
+                    # Detect persons
+                    detections = self.detector.detect(frame)
+                    
+                    # Update tracker
+                    tracks = self.tracker.update(detections)
+                    
+                    # Process each track for ROI crossing
+                    for track_id, track in tracks.items():
+                        self.process_track_roi_crossing(track, track_id)
+                    
+                    # Draw visualization (can be disabled for headless)
+                    if self.config.log_level == "DEBUG" or True: # Keep enabled for now
+                        vis_frame = self.draw_visualization(frame, tracks, detections)
+                        cv2.imshow(f"Retail Intelligence - {self.branch_id}", vis_frame)
+                    
+                    # Press 'q' to quit, 'p' to pause
+                    key = cv2.waitKey(1) & 0xFF
+                    if key == ord('q'):
+                        logger.info("User requested quit")
+                        cap.release()
+                        cv2.destroyAllWindows()
+                        return
+                    elif key == ord('p'):
+                        logger.info("Paused - press any key to continue")
+                        cv2.waitKey(0)
+                    
+                    # Log progress
+                    if frame_count % 100 == 0:
+                        logger.info(
+                            "Processing progress",
+                            branch_id=self.branch_id,
+                            frame_count=frame_count,
+                            active_tracks=len(tracks)
+                        )
+                    
+                    # Watchdog: if no frame for 10 seconds, reconnect
+                    if (datetime.utcnow() - last_frame_time).total_seconds() > 10:
+                        logger.warning("Stream frozen - reconnecting", branch_id=self.branch_id)
+                        break
+            
+            except Exception as e:
+                logger.error("Error in processing loop", branch_id=self.branch_id, error=str(e))
+            
+            finally:
+                cap.release()
+                logger.info("Stream released", branch_id=self.branch_id)
+                import time
+                time.sleep(2)  # Short delay before reconnecting
 
 
 if __name__ == "__main__":

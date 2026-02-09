@@ -13,6 +13,9 @@ class CVConfig(BaseSettings):
     # Video source (RTSP URL or file path)
     video_source: str = os.getenv("CV_VIDEO_SOURCE", "rtsp://camera:554/stream")
     
+    # Path to streams config JSON
+    streams_config_path: str = os.getenv("CV_STREAMS_CONFIG_PATH", "streams_config.json")
+    
     # ROI coordinates (x1,y1,x2,y2)
     roi_coordinates: str = os.getenv("CV_ROI_COORDINATES", "100,100,500,400")
     
