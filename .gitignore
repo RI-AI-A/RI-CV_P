@@ -39,3 +39,8 @@ models/
 
 # Alembic
 db/migrations/versions/*.pyc
+
+# Video files (too large for GitHub)
+data/*.mp4
+data/*.avi
+data/*.mov
