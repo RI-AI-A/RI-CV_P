@@ -1,4 +1,4 @@
-"""YOLOv8 person detection module."""
+"""YOLOv8 person detection and tracking module."""
 from ultralytics import YOLO
 import numpy as np
 from typing import List, Tuple
@@ -12,7 +12,7 @@ logger = structlog.get_logger()
 
 
 class PersonDetector:
-    """YOLOv8-based person detector."""
+    """YOLOv8-based person detector and tracker."""
     
     # COCO dataset person class ID
     PERSON_CLASS_ID = 0
@@ -74,6 +74,23 @@ class PersonDetector:
                 ))
         
         return detections
+
+    def track(self, frame: np.ndarray):
+        """
+        Track persons in a frame using ByteTrack.
+
+        Args:
+            frame: Input image frame (BGR format)
+
+        Returns:
+            Ultralytics tracking results.
+        """
+        return self.model.track(
+            frame,
+            verbose=False,
+            persist=True,
+            tracker="bytetrack.yaml"
+        )
     
     def get_center(self, bbox: Tuple[int, int, int, int]) -> Tuple[int, int]:
         """

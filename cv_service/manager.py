@@ -40,7 +40,9 @@ class CVStreamManager:
                         processor = StreamProcessor(
                             branch_id=stream.get("branch_id"),
                             video_source=stream.get("video_source"),
-                            roi_coordinates=stream.get("roi_coordinates")
+                            roi_coordinates=stream.get("roi_coordinates"),
+                            rois=stream.get("rois"),
+                            camera_id=stream.get("camera_id")
                         )
                         self.processors.append(processor)
                 logger.info("Loaded multi-stream config", count=len(self.processors))

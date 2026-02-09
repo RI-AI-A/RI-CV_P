@@ -18,6 +18,9 @@ class CVConfig(BaseSettings):
     
     # ROI coordinates (x1,y1,x2,y2)
     roi_coordinates: str = os.getenv("CV_ROI_COORDINATES", "100,100,500,400")
+
+    # ROI configuration JSON (for polygon/line/multiple ROIs)
+    roi_config_json: str = os.getenv("CV_ROI_CONFIG_JSON", "")
     
     # YOLO model configuration
     yolo_model_path: str = os.getenv("YOLO_MODEL_PATH", "yolov8n.pt")
@@ -30,6 +33,20 @@ class CVConfig(BaseSettings):
     
     # API configuration
     api_base_url: str = os.getenv("API_BASE_URL", "http://api_service:8000")
+
+    # Camera configuration
+    camera_id: str = os.getenv("CV_CAMERA_ID", "camera_001")
+
+    # Visualization
+    visualize: bool = os.getenv("CV_VISUALIZE", "false").lower() == "true"
+
+    # Stream reconnect behavior
+    reconnect_delay_seconds: int = int(os.getenv("CV_RECONNECT_DELAY_SECONDS", "5"))
+    heartbeat_interval_seconds: int = int(os.getenv("CV_HEARTBEAT_INTERVAL_SECONDS", "30"))
+
+    # Event batching
+    batch_interval_seconds: float = float(os.getenv("CV_BATCH_INTERVAL_SECONDS", "2.0"))
+    batch_max_size: int = int(os.getenv("CV_BATCH_MAX_SIZE", "20"))
     
     # Logging
     log_level: str = os.getenv("LOG_LEVEL", "INFO")
