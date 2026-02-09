@@ -14,7 +14,13 @@ class CVEventBuilder:
         branch_id: str,
         enter_time: datetime,
         exit_time: Optional[datetime],
-        action_type: ActionType
+        action_type: ActionType,
+        camera_id: str,
+        roi_id: str,
+        track_id: int,
+        dwell_time_seconds: Optional[float],
+        confidence_avg: Optional[float],
+        frame_time: datetime
     ) -> dict:
         """
         Build CV event payload.
@@ -25,6 +31,12 @@ class CVEventBuilder:
             enter_time: Entry timestamp
             exit_time: Exit timestamp (optional)
             action_type: Action type (passed or entered)
+            camera_id: Camera identifier
+            roi_id: ROI identifier
+            track_id: Stable tracker ID
+            dwell_time_seconds: Dwell time in seconds for exit events
+            confidence_avg: Average confidence for the track
+            frame_time: Frame timestamp
             
         Returns:
             Event payload dictionary
@@ -34,5 +46,11 @@ class CVEventBuilder:
             "branch_id": branch_id,
             "enter_time": enter_time.isoformat(),
             "exit_time": exit_time.isoformat() if exit_time else None,
-            "action_type": action_type.value
+            "action_type": action_type.value,
+            "camera_id": camera_id,
+            "roi_id": roi_id,
+            "track_id": track_id,
+            "dwell_time_seconds": dwell_time_seconds,
+            "confidence_avg": confidence_avg,
+            "frame_time": frame_time.isoformat()
         }
