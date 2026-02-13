@@ -7,14 +7,11 @@ class APIConfig(BaseSettings):
     """API service configuration."""
     
     # Database
-    database_url: str = os.getenv(
-        "DATABASE_URL",
-        "postgresql+asyncpg://retail_user:retail_pass@postgres:5432/retail_intel"
-    )
+    database_url: str
     
     # Server
-    api_host: str = os.getenv("API_HOST", "0.0.0.0")
-    api_port: int = int(os.getenv("API_PORT", "8000"))
+    api_host: str = "0.0.0.0"
+    api_port: int = 8000
     
     # CORS
     cors_origins: list = ["*"]
