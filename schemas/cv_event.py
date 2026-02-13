@@ -9,6 +9,7 @@ class ActionType(str, Enum):
     """Customer action types."""
     PASSED = "passed"
     ENTERED = "entered"
+    EXITED = "exited"
 
 
 class CVEventCreate(BaseModel):
@@ -16,8 +17,10 @@ class CVEventCreate(BaseModel):
     customer_id: UUID4 = Field(..., description="Anonymized customer UUID")
     branch_id: str = Field(..., description="Branch identifier")
     enter_time: datetime = Field(..., description="Entry timestamp (ISO-8601)")
-    exit_time: Optional[datetime] = Field(None, description="Exit timestamp (ISO-8601), null if still in branch")
-    action_type: ActionType = Field(..., description="Action type: passed or entered")
+    exit_time: Optional[datetime] = Field(
+        None, description="Exit timestamp (ISO-8601), null if still in branch"
+    )
+    action_type: ActionType = Field(..., description="Action type: passed / entered / exited")
 
     class Config:
         json_schema_extra = {

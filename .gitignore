@@ -1,46 +1,59 @@
-# Ignore Python cache
+# ==============================
+# Python
+# ==============================
 __pycache__/
 *.py[cod]
 *$py.class
-*.so
 
-# Virtual environment
+# Virtual environments
+.venv/
 venv/
 env/
-ENV/
 
-# IDE
+# Distribution / packaging
+build/
+dist/
+*.egg-info/
+
+# ==============================
+# Environment variables
+# ==============================
+.env
+.env.*
+
+# ==============================
+# Logs
+# ==============================
+*.log
+
+# ==============================
+# IDE / Editors
+# ==============================
 .vscode/
 .idea/
 *.swp
 *.swo
 
-# Environment variables
-.env
+# ==============================
+# OS files
+# ==============================
+.DS_Store
+Thumbs.db
 
-# Database
-*.db
-*.sqlite
+# ==============================
+# Model files (optional)
+# ==============================
+*.pt
+*.onnx
 
-# Logs
-*.log
-
-# Testing
-.pytest_cache/
-.coverage
-htmlcov/
-
-# Temporary PID files
-*.pid
-
-# YOLO models cache
-.cache/
-models/
-
-# Alembic
-db/migrations/versions/*.pyc
-
-# Video files (too large for GitHub)
+# ==============================
+# Video files (optional - if large)
+# ==============================
 data/*.mp4
 data/*.avi
-data/*.mov
+
+# ==============================
+# Testing / temp
+# ==============================
+.coverage
+.pytest_cache/
