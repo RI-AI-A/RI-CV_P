@@ -143,12 +143,10 @@ class StreamProcessor:
         self.event_buffer = []
 
         try:
-            success = self.api_client.post_events_batch_sync(events)
-            if not success:
-                for event in events:
-                    self.api_client.post_event_sync(event)
+            # Non-blocking: Add to the internal client queue
+            self.api_client.enqueue_batch(events)
         except Exception as exc:
-            logger.error("Failed to flush events", error=str(exc))
+            logger.error("Failed to enqueue batch events", error=str(exc))
 
     def _maybe_flush_events(self, frame_time: datetime) -> None:
         if len(self.event_buffer) >= self.config.batch_max_size:
