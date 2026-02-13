@@ -20,8 +20,9 @@ class CVAPIClient:
         """
         self.api_base_url = api_base_url.rstrip("/")
         self.events_endpoint = f"{self.api_base_url}/cv/events"
+        self.batch_endpoint = f"{self.api_base_url}/cv/events/batch"
         
-        logger.info("CV API Client initialized", endpoint=self.events_endpoint)
+        logger.info("CV API Client initialized", endpoint=self.events_endpoint, batch_endpoint=self.batch_endpoint)
     
     @retry(
         stop=stop_after_attempt(3),
@@ -80,8 +81,8 @@ class CVAPIClient:
         try:
             async with httpx.AsyncClient(timeout=10.0) as client:
                 response = await client.post(
-                    self.events_endpoint,
-                    json=events
+                    self.batch_endpoint,
+                    json=[event for event in events]
                 )
 
                 if response.status_code == 200:
