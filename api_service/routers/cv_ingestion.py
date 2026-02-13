@@ -3,6 +3,7 @@ from fastapi import APIRouter, Depends, HTTPException, status
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy import select
 import structlog
+from typing import List
 
 from api_service.deps import get_database
 from schemas.cv_event import CVEventCreate, CVEventResponse
@@ -28,6 +29,30 @@ async def ingest_cv_event(
     Returns:
         Success response
     """
+    return await process_single_event(event, db)
+
+
+@router.post("/events/batch", response_model=dict, status_code=status.HTTP_200_OK)
+async def ingest_cv_batch_events(
+    events: List[CVEventCreate],
+    db: AsyncSession = Depends(get_database)
+):
+    """
+    Ingest a batch of CV events.
+    """
+    results = []
+    for event in events:
+        try:
+            res = await process_single_event(event, db)
+            results.append(res)
+        except Exception as e:
+            logger.error("Error in batch ingestion for single event", error=str(e))
+            continue
+    
+    return {"status": "success", "processed": len(results), "total": len(events)}
+
+
+async def process_single_event(event: CVEventCreate, db: AsyncSession):
     try:
         # Ensure customer exists
         customer_result = await db.execute(

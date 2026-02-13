@@ -2,6 +2,9 @@
 from pydantic_settings import BaseSettings
 from typing import Tuple
 import os
+from dotenv import load_dotenv
+
+load_dotenv()
 
 
 class CVConfig(BaseSettings):

@@ -15,9 +15,9 @@ class CVAPIClient:
     def __init__(self, api_base_url: str):
         self.api_base_url = api_base_url.rstrip("/")
 
-        # Core backend is /api/v1/*
-        self.events_endpoint = f"{self.api_base_url}/api/v1/events"
-        self.events_batch_endpoint = f"{self.api_base_url}/api/v1/events/batch"
+        # Core backend is /cv/* based on local router configuration
+        self.events_endpoint = f"{self.api_base_url}/cv/events"
+        self.events_batch_endpoint = f"{self.api_base_url}/cv/events/batch"
 
         # ✅ disable batch permanently if backend doesn't support it
         self.batch_enabled = True
@@ -73,7 +73,7 @@ class CVAPIClient:
     async def post_events_batch(self, events: List[Dict[str, Any]]) -> bool:
         """
         Batch strategy:
-        - If /api/v1/events/batch exists => use it
+        - If /cv/events/batch exists => use it
         - Otherwise disable batch and return False (caller will fallback to single)
         """
         if not events:
