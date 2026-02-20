@@ -14,6 +14,9 @@ RUN apt-get update && apt-get install -y \
 # Set working directory
 WORKDIR /app
 
+# Pre-install heavy AI libraries so Docker permanently caches them before reading requirements
+RUN pip install --default-timeout=1000 ultralytics==8.1.11 opencv-python-headless==4.9.0.80 torch==2.2.0
+
 # Copy requirements first for better caching
 COPY requirements.txt .
 
