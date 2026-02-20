@@ -7,6 +7,8 @@ from contextlib import asynccontextmanager
 from api_service.config import api_config
 from api_service.routers import cv_ingestion, branches, tasks, events, kpis, situations, recommendations
 from db.session import engine
+from api_service.middleware.error_handler import setup_exception_handlers
+from api_service.middleware.correlation import CorrelationIdMiddleware
 
 # Configure structured logging
 structlog.configure(
@@ -57,6 +59,10 @@ app.include_router(events.router)
 app.include_router(kpis.router)
 app.include_router(situations.router)
 app.include_router(recommendations.router)
+
+# Add Middlewares and exception handlers
+app.add_middleware(CorrelationIdMiddleware)
+setup_exception_handlers(app)
 
 
 @app.get("/health")

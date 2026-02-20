@@ -35,6 +35,7 @@ class TaskResponse(BaseModel):
     time: datetime
     state: str
     branch_id: str
+    recommendation_id: Optional[int] = None
     note: Optional[str]
 
     class Config:
@@ -47,6 +48,7 @@ class TaskFromRecommendation(BaseModel):
     action: str
     priority: str
     expected_impact: str
+    recommendation_id: Optional[int] = None
     details: Optional[str] = None
     note: Optional[str] = None
 

@@ -54,6 +54,29 @@ async def ingest_cv_batch_events(
 
 async def process_single_event(event: CVEventCreate, db: AsyncSession):
     try:
+        import hashlib
+        import asyncio
+        
+        # Generate idempotency hash asynchronously to avoid blocking event loop
+        hash_input = f"{event.customer_id}_{event.branch_id}_{event.enter_time.timestamp()}"
+        
+        def _compute_hash(data: str) -> str:
+            return hashlib.sha256(data.encode()).hexdigest()
+            
+        event_hash = await asyncio.to_thread(_compute_hash, hash_input)
+        
+        # Check if this event already exists
+        existing_result = await db.execute(
+            select(CustomerBranchMovement).where(CustomerBranchMovement.event_hash == event_hash)
+        )
+        if existing_result.scalar_one_or_none():
+            logger.info("Ignoring duplicate event based on idempotency hash", event_hash=event_hash)
+            return {
+                "status": "success",
+                "message": "Event already processed",
+                "customer_id": str(event.customer_id)
+            }
+        
         # Ensure customer exists
         customer_result = await db.execute(
             select(Customer).where(Customer.customer_id == event.customer_id)
@@ -87,7 +110,8 @@ async def process_single_event(event: CVEventCreate, db: AsyncSession):
             branch_id=event.branch_id,
             enter_time=event.enter_time,
             exit_time=event.exit_time,
-            action_type=event.action_type
+            action_type=event.action_type,
+            event_hash=event_hash
         )
         db.add(movement)
         

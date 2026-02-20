@@ -22,8 +22,12 @@ class CVAPIClient:
         self.events_endpoint = f"{self.api_base_url}/cv/events"
         self.events_batch_endpoint = f"{self.api_base_url}/cv/events/batch"
 
-        # ✅ disable batch permanently if backend doesn't support it
-        self.batch_enabled = True
+        # Batch Circuit Breaker State
+        self.batch_cb_state = "CLOSED"  # "CLOSED", "OPEN", "HALF_OPEN"
+        self.batch_cb_failures = 0
+        self.batch_cb_threshold = 2
+        self.batch_cb_timeout = 30.0  # seconds to stay OPEN
+        self.batch_cb_last_failure_time = 0.0
         
         # Async Queue Implementation
         self._queue = queue.Queue(maxsize=10000)
@@ -137,6 +141,16 @@ class CVAPIClient:
             logger.error("Error posting event", endpoint=self.events_endpoint, error=str(e))
             raise
 
+    def _record_batch_failure(self):
+        self.batch_cb_failures += 1
+        self.batch_cb_last_failure_time = time.time()
+        if self.batch_cb_state == "CLOSED" and self.batch_cb_failures >= self.batch_cb_threshold:
+            self.batch_cb_state = "OPEN"
+            logger.warning("Batch circuit breaker tripped to OPEN state")
+        elif self.batch_cb_state == "HALF_OPEN":
+            self.batch_cb_state = "OPEN"
+            logger.warning("Batch circuit breaker tripped back to OPEN state")
+
     @retry(
         stop=stop_after_attempt(3),
         wait=wait_exponential(multiplier=1, min=2, max=10),
@@ -151,24 +165,22 @@ class CVAPIClient:
         if not events:
             return True
 
-        if not self.batch_enabled:
-            return False
+        if self.batch_cb_state == "OPEN":
+            if time.time() - self.batch_cb_last_failure_time > self.batch_cb_timeout:
+                self.batch_cb_state = "HALF_OPEN"
+                logger.info("Batch circuit breaker transitioning to HALF_OPEN")
+            else:
+                return False
 
         try:
             async with httpx.AsyncClient(timeout=15.0) as client:
                 resp1 = await client.post(self.events_batch_endpoint, json=events)
 
-                # ✅ backend doesn't support batch -> disable it forever
-                if resp1.status_code == 404:
-                    self.batch_enabled = False
-                    logger.warning(
-                        "Batch endpoint not supported by Core backend; disabling batch mode",
-                        endpoint=self.events_batch_endpoint,
-                        status_code=resp1.status_code,
-                    )
-                    return False
-
                 if self._is_success(resp1.status_code):
+                    if self.batch_cb_state != "CLOSED":
+                        self.batch_cb_state = "CLOSED"
+                        self.batch_cb_failures = 0
+                        logger.info("Batch circuit breaker reset to CLOSED")
                     logger.info(
                         "Batch events posted successfully",
                         count=len(events),
@@ -176,10 +188,11 @@ class CVAPIClient:
                     return True
 
                 logger.warning(
-                    "Batch endpoint failed (non-404)",
+                    "Batch endpoint failed",
                     status_code=resp1.status_code,
                     count=len(events),
                 )
+                self._record_batch_failure()
                 return False
 
         except Exception as e:

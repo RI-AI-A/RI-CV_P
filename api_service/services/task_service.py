@@ -39,6 +39,7 @@ class TaskService:
             task=description,
             time=datetime.utcnow(),
             state="pending",
+            recommendation_id=req.recommendation_id,
             note=note.strip()
         )
         
